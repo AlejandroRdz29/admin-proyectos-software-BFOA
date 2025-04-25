@@ -78,7 +78,7 @@ if __name__ == "__main__":
     
 
     #---------------------------------------------------------------------------------------------------------
-    operadorBacterial = bacteria(numeroDeBacterias)    
+    operadorBacterial = bacteria(numeroDeBacterias, iteraciones)    
     veryBest = [None, None, None] #indice, fitness, secuencias
     
     #registra el tiempo de inicio
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     
     for it in range(iteraciones):
         print("poblacion inicial creada - Tumbo ...")
-        operadorBacterial.tumbo(numSec, poblacion, tumbo)
+        operadorBacterial.tumbo(poblacion, tumbo, operadorBacterial.tablaFitness)
         print("Tumbo Realizado - Cuadrando ...")
         operadorBacterial.cuadra(numSec, poblacion)
         print("poblacion inicial cuadrada - Creando granLista de Pares...")
@@ -98,8 +98,7 @@ if __name__ == "__main__":
         operadorBacterial.evaluaBlosum()  #paralelo
         print("blosum evaluado - creando Tablas Atract Parallel...")
 
-        operadorBacterial.creaTablasAtractRepel(poblacion, dAttr, wAttr,hRep, wRep)
-
+        operadorBacterial.creaTablasAtractRepel(poblacion, dAttr, wAttr, hRep, wRep, it)
 
         operadorBacterial.creaTablaInteraction()
         print("tabla Interaction creada - creando tabla Fitness")
@@ -114,10 +113,5 @@ if __name__ == "__main__":
         operadorBacterial.replaceWorst(poblacion, veryBest[0])
         operadorBacterial.resetListas(numeroDeBacterias)
 
-    # print("Very Best: ", veryBest)
     #imprime el tiempo de ejecucion
     print("--- %s seconds ---" % (time.time() - start_time))
-
-
-
-    

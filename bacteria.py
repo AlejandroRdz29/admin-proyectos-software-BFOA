@@ -14,8 +14,12 @@ import concurrent.futures
 class bacteria():
     
 
-    def __init__(self, numBacterias):
-        # manager = Manager()
+    def __init__(self, numBacterias, maxIteraciones):
+        # Nuevo
+        self.max_iteraciones = maxIteraciones
+        self.iteracion_actual = 0 # Para llevar el registro de la iteración actual
+
+        # Original
         manager = Manager()
         self.blosumScore = manager.list(range(numBacterias))
         self.tablaAtract = manager.list(range(numBacterias))
@@ -94,25 +98,29 @@ class bacteria():
     
     
 
-    def tumbo(self, numSec, poblacion, numGaps):
-        #inserta un gap en una posicion aleatoria de una secuencia aleatoria
-        #recorre la poblacion
+    def tumbo(self, poblacion, numGaps, tablaFitness):
+        # Obtener el fitness máximo y mínimo de la población
+        max_fitness = max(tablaFitness) if tablaFitness else 1
+        min_fitness = min(tablaFitness) if tablaFitness else 0
+        rango_fitness = max_fitness - min_fitness if max_fitness > min_fitness else 1
+
         for i in range(len(poblacion)):
-            #obtiene las secuencias de la bacteria
-            bacterTmp = poblacion[i]
-            bacterTmp = list(bacterTmp)
-            # bacterTmp = bacterTmp[:numSec]
-            #ciclo para insertar gaps
-            for j in range(numGaps):
-                #selecciona secuencia
-                seqnum = random.randint(0, len(bacterTmp)-1)
-                #selecciona posicion
-                pos = random.randint(0, len(bacterTmp[seqnum]))
-                part1 = bacterTmp[seqnum][:pos]
-                part2 = bacterTmp[seqnum][pos:]
-                temp = part1 + ["-"] + part2
-                bacterTmp[seqnum] = temp
-                #actualiza la poblacion
+            # Calcular una probabilidad de mutación basada en el fitness (menor fitness -> mayor probabilidad)
+            fitness_relativo = (tablaFitness[i] - min_fitness) / rango_fitness if rango_fitness > 0 else 0.5 # Evitar división por cero
+            prob_mutacion = 1 - fitness_relativo # Invertir para que los peores tengan mayor probabilidad
+
+            if random.random() < prob_mutacion:
+                # Calcular el número de gaps a insertar (podría ser fijo o también adaptativo)
+                num_gaps_bacteria = random.randint(1, numGaps) # Ejemplo: entre 1 y el número máximo de gaps
+
+                bacterTmp = list(poblacion[i])
+                for _ in range(num_gaps_bacteria):
+                    seqnum = random.randint(0, len(bacterTmp) - 1)
+                    pos = random.randint(0, len(bacterTmp[seqnum]))
+                    part1 = bacterTmp[seqnum][:pos]
+                    part2 = bacterTmp[seqnum][pos:]
+                    temp = part1 + ["-"] + part2
+                    bacterTmp[seqnum] = temp
                 poblacion[i] = tuple(bacterTmp)
         
        
@@ -197,11 +205,11 @@ class bacteria():
         
 
   
-    def creaTablaAtract(self, poblacion, d, w):                   #lineal
+    def creaTablaAtract(self, poblacion, d, w, iteracion_actual):
+        # Adaptación lineal de w_attr
+        w_adaptado = w * (1 - (iteracion_actual / self.max_iteraciones))
         for indexBacteria in range(len(poblacion)):
-            self.compute_cell_interaction(indexBacteria,d, w, TRUE)
-            # print("invocando indexBacteria numero: ", indexBacteria)
-        # print("tablaAtract: ", self.tablaAtract)
+            self.compute_cell_interaction(indexBacteria, d, w_adaptado, TRUE)
 
     def creaTablaRepel(self, poblacion, d, w):                   #lineal
         for indexBacteria in range(len(poblacion)):
@@ -209,14 +217,20 @@ class bacteria():
             # print("invocando indexBacteria numero: ", indexBacteria)
         # print("tablaAtract: ", self.tablaAtract)
     
-    def creaTablasAtractRepel(self, poblacion, dAttr, wAttr, dRepel, wRepel):
-        #invoca ambos metodos en paralelo
+    def sigmoid(self, x, k, x0, min_val, max_val):
+        """Función sigmoidal escalada."""
+        return min_val + (max_val - min_val) / (1 + math.exp(-k * (x - x0)))
+
+
+    def creaTablasAtractRepel(self, poblacion, dAttr, wAttr_inicial, dRepel, wRepel_inicial, iteracion_actual):
+        # Adaptación lineal de wAttr y wRepel
+        wAttr_adaptado = wAttr_inicial * (1 - (iteracion_actual / self.max_iteraciones))
+        wRepel_adaptado = wRepel_inicial * (iteracion_actual / self.max_iteraciones) # Podrías probar diferentes funciones
+
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            executor.submit(self.creaTablaAtract, poblacion, dAttr, wAttr)
-            executor.submit(self.creaTablaRepel, poblacion, dRepel, wRepel)
-            
-
-
+            executor.submit(self.creaTablaAtract, poblacion, dAttr, wAttr_adaptado)
+            executor.submit(self.creaTablaRepel, poblacion, dRepel, wRepel_adaptado)
+                
 
             #-----------------------------------------------------------
             
